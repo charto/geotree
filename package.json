@@ -1,0 +1,28 @@
+{
+  "name": "geotree",
+  "version": "0.0.1",
+  "description": "Geodata storage",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "tsc": "tsc",
+    "prepublish": "tsc -p src"
+  },
+  "author": "Juha Järvi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/charto/geotree.git"
+  },
+  "bugs": {
+    "url": "https://github.com/charto/geotree/issues"
+  },
+  "homepage": "https://github.com/charto/geotree#readme",
+  "keywords": [
+    "gis",
+    "quadtree"
+  ],
+  "devDependencies": {
+    "typescript": "^2.3.4"
+  }
+}
