@@ -1,6 +1,6 @@
 {
   "name": "geotree",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Geodata storage",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -23,6 +23,6 @@
     "quadtree"
   ],
   "devDependencies": {
-    "typescript": "^2.3.4"
+    "typescript": "^2.4.1"
   }
 }
