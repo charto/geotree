@@ -23,6 +23,6 @@
     "quadtree"
   ],
   "devDependencies": {
-    "typescript": "^2.4.1"
+    "typescript": "^2.4.2"
   }
 }
