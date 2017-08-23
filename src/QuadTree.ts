@@ -14,7 +14,8 @@ export class QuadTile {
 		public s: number,
 		public w: number,
 		public n: number,
-		public e: number
+		public e: number,
+		public path: string
 	) {}
 
 	split(spec: QuadType[] = []) {
@@ -26,10 +27,10 @@ export class QuadTile {
 		const ew = w + (e - w >> 1);
 
 		this.childList = [
-			spec[QuadPos.SW] ? this.makeChild(s, w, ns, ew) : null,
-			spec[QuadPos.SE] ? this.makeChild(s, ew, ns, e) : null,
-			spec[QuadPos.NW] ? this.makeChild(ns, w, n, ew) : null,
-			spec[QuadPos.NE] ? this.makeChild(ns, ew, n, e) : null
+			spec[QuadPos.SW] ? this.makeChild(s, w, ns, ew, QuadPos.SW) : null,
+			spec[QuadPos.SE] ? this.makeChild(s, ew, ns, e, QuadPos.SE) : null,
+			spec[QuadPos.NW] ? this.makeChild(ns, w, n, ew, QuadPos.NW) : null,
+			spec[QuadPos.NE] ? this.makeChild(ns, ew, n, e, QuadPos.NE) : null
 		];
 	}
 
@@ -37,9 +38,10 @@ export class QuadTile {
 		s: number,
 		w: number,
 		n: number,
-		e: number
+		e: number,
+		pos: QuadPos
 	) {
-		return(new QuadTile(s, w, n, e));
+		return(new QuadTile(s, w, n, e, this.path + pos));
 	}
 
 	childList: QuadList | null | undefined;
@@ -53,7 +55,7 @@ export class QuadTree {
 		public n: number,
 		public e: number
 	) {
-		this.root = new QuadTile(s, w, n, e);
+		this.root = new QuadTile(s, w, n, e, '');
 	}
 
 	importStructure(spec: QuadType[]) {
