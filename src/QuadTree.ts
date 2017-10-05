@@ -1,75 +1,31 @@
-export const enum QuadPos { SW = 0, SE, NW, NE }
-export const enum QuadType { missing = 0, leaf, branch }
+import { QuadTile, TileClass, QuadPos, QuadPosFlag, QuadList } from './QuadTile';
 
-/** List of quadtree child nodes, indexed using QuadPos. */
-export type QuadList = [
-	QuadTile | null,
-	QuadTile | null,
-	QuadTile | null,
-	QuadTile | null
-];
+export class QuadTree<Tile extends QuadTile = QuadTile> {
 
-export class QuadTile {
 	constructor(
 		public s: number,
 		public w: number,
 		public n: number,
 		public e: number,
-		public path: string
-	) {}
-
-	split(spec: QuadType[] = []) {
-		const s = this.s;
-		const w = this.w;
-		const n = this.n;
-		const e = this.e;
-		const ns = s + (n - s >> 1);
-		const ew = w + (e - w >> 1);
-
-		this.childList = [
-			spec[QuadPos.SW] ? this.makeChild(s, w, ns, ew, QuadPos.SW) : null,
-			spec[QuadPos.SE] ? this.makeChild(s, ew, ns, e, QuadPos.SE) : null,
-			spec[QuadPos.NW] ? this.makeChild(ns, w, n, ew, QuadPos.NW) : null,
-			spec[QuadPos.NE] ? this.makeChild(ns, ew, n, e, QuadPos.NE) : null
-		];
-	}
-
-	protected makeChild(
-		s: number,
-		w: number,
-		n: number,
-		e: number,
-		pos: QuadPos
+		public Tile = QuadTile as TileClass<Tile>
 	) {
-		return(new QuadTile(s, w, n, e, this.path + pos));
+		this.root = new Tile(s, w, n, e);
 	}
 
-	childList: QuadList | null | undefined;
-	featureCount = 0;
-}
-
-export class QuadTree {
-	constructor(
-		public s: number,
-		public w: number,
-		public n: number,
-		public e: number
-	) {
-		this.root = new QuadTile(s, w, n, e, '');
-	}
-
-	importStructure(spec: QuadType[]) {
+	importStructure(spec: number[]) {
+		const Tile = this.Tile;
 		let pos = 0;
 		let node = this.root;
 
-		function rec(node: QuadTile) {
-			const part = spec.slice(pos, pos + 4);
-			pos += 4;
+		function rec(node: Tile) {
+			node.split(spec[pos++]);
 
-			node.split(part);
+			const branchPosFlags = spec[pos++];
+			let posFlag = QuadPosFlag.SW;
 
-			for(let sub: QuadType = 0; sub < 4; ++sub) {
-				if(part[sub] == QuadType.branch) rec(node.childList![sub]!);
+			for(let pos = QuadPos.SW; pos < 4; ++pos) {
+				if(branchPosFlags & posFlag) rec(node.childList![pos]!);
+				posFlag <<= 1;
 			}
 		}
 
@@ -79,18 +35,25 @@ export class QuadTree {
 	}
 
 	exportStructure() {
-		const spec: QuadType[] = [];
+		const spec: number[] = [];
 
-		function rec(childList: QuadList | null | undefined) {
+		function rec(childList: QuadList<Tile> | undefined) {
 			if(!childList) return;
 
+			let childPosFlags = 0b0000;
+			let branchPosFlags = 0b0000;
+			let posFlag = QuadPosFlag.SW;
+
 			for(let child of childList) {
-				spec.push(
-					!child ? QuadType.missing : (
-						child.childList ? QuadType.branch : QuadType.leaf
-					)
-				);
+				if(child) {
+					childPosFlags |= posFlag;
+					if(child.childList) branchPosFlags |= posFlag;
+				}
+				posFlag <<= 1;
 			}
+
+			spec.push(childPosFlags);
+			spec.push(branchPosFlags);
 
 			for(let child of childList) {
 				if(child) rec(child.childList);
@@ -102,5 +65,6 @@ export class QuadTree {
 		return(spec);
 	}
 
-	root: QuadTile;
+	root: Tile;
+
 }
