@@ -13,7 +13,7 @@ export class QuadTree<Tile extends QuadTile = QuadTile> {
 	}
 
 	iterate(
-		handler: (tile: Tile) => void,
+		handler: (tile: Tile) => void | Promise<any>,
 		s = this.s,
 		w = this.w,
 		n = this.n,
@@ -21,35 +21,50 @@ export class QuadTree<Tile extends QuadTile = QuadTile> {
 		root = this.root
 	) {
 		function rec(node: Tile) {
-			if(!node.childList) handler(node);
-			if(!node.childList) return;
+			let result: { then: (fn: () => any) => void | Promise<any> } | void = handler(node);
+			let isPromise = true;
 
-			const ns = s + (n - s) / 2;
-			const ew = w + (e - w) / 2;
-			let child: Tile | null;
-
-			if(s < ns) {
-				child = node.childList[QuadPos.SW];
-				if(w < ew && child) rec(child);
-				child = node.childList[QuadPos.SE];
-				if(e >= ew && child) rec(child);
+			if(typeof(result) != 'object' || typeof(result.then) != 'function') {
+				result = { then: ((fn: () => void) => fn()) };
+				isPromise = false;
 			}
 
-			if(n >= ns) {
-				child = node.childList[QuadPos.NW];
-				if(w < ew && child) rec(child);
-				child = node.childList[QuadPos.NE];
-				if(e >= ew && child) rec(child);
-			}
+			const ready = result.then(() => {
+				if(!node.childList) return;
+
+				const readyList: any[] = [];
+
+				const ns = s + (n - s) / 2;
+				const ew = w + (e - w) / 2;
+				let child: Tile | null;
+
+				if(s < ns) {
+					child = node.childList[QuadPos.SW];
+					if(w < ew && child) readyList.push(rec(child));
+					child = node.childList[QuadPos.SE];
+					if(e >= ew && child) readyList.push(rec(child));
+				}
+
+				if(n >= ns) {
+					child = node.childList[QuadPos.NW];
+					if(w < ew && child) readyList.push(rec(child));
+					child = node.childList[QuadPos.NE];
+					if(e >= ew && child) readyList.push(rec(child));
+				}
+
+				if(isPromise) return(Promise.all(readyList));
+			});
+
+			return(ready);
 		}
 
-		rec(root);
+		return(rec(root));
 	}
 
 	findTiles(s?: number, w?: number, n?: number, e?: number) {
 		const result: Tile[] = [];
 
-		this.iterate((tile: Tile) => tile.childList || result.push(tile), s, w, n, e);
+		this.iterate((tile: Tile) => { if(!tile.childList) result.push(tile) }, s, w, n, e);
 
 		return(result);
 	}
@@ -62,6 +77,8 @@ export class QuadTree<Tile extends QuadTile = QuadTile> {
 		const result: Tile[] = [];
 
 		this.iterate((tile: Tile) => {
+			if(tile.childList) return;
+
 			// Calculate tile overlap with query box along both axes.
 			const nsCoverage = Math.min(tile.n, n) - Math.max(tile.s, s);
 			const ewCoverage = Math.min(tile.e, e) - Math.max(tile.w, w);
