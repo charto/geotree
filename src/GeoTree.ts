@@ -1,15 +1,17 @@
 import { QuadTree } from './QuadTree';
+import { TileClass } from './QuadTile';
 import { GeoTile } from './GeoTile';
 
-export class GeoTree extends QuadTree<GeoTile> {
+export class GeoTree<Tile extends GeoTile = GeoTile> extends QuadTree<Tile> {
 
 	constructor(
-		public s: number,
-		public w: number,
-		public n: number,
-		public e: number
+		s: number,
+		w: number,
+		n: number,
+		e: number,
+		Tile = GeoTile as TileClass<Tile>
 	) {
-		super(s, w, n, e, GeoTile);
+		super(s, w, n, e, Tile);
 	}
 
 }
