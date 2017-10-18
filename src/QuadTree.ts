@@ -12,47 +12,61 @@ export class QuadTree<Tile extends QuadTile = QuadTile> {
 		this.root = new Tile(s, w, n, e);
 	}
 
+	/** @param before Called before entering child tiles, for pre-order traversal.
+	  * @param after Called after entering child tiles, for post-order traversal.
+	  * @param s Bounding box south edge. Any tiles outside are not reported.
+	  * @param w Bounding box west edge.
+	  * @param n Bounding box north edge.
+	  * @param e Bounding box east edge. */
+
 	iterate(
-		handler: (tile: Tile) => void | Promise<any>,
+		before?: ((tile: Tile) => void | boolean | Promise<boolean>) | null,
+		after?: ((tile: Tile) => void | boolean | Promise<boolean>) | null,
 		s = this.s,
 		w = this.w,
 		n = this.n,
 		e = this.e,
 		root = this.root
 	) {
-		function rec(node: Tile) {
-			let result: { then: (fn: () => any) => void | Promise<any> } | void = handler(node);
+		function rec(tile: Tile) {
+			let result: { then: (fn: (flag?: void | boolean | null) => any) => Promise<void | boolean | null> } | void | boolean | null = before && before(tile);
 			let isPromise = true;
 
-			if(typeof(result) != 'object' || typeof(result.then) != 'function') {
-				result = { then: ((fn: () => void) => fn()) };
+			if(!result || typeof(result) != 'object' || typeof(result.then) != 'function') {
+				const flag = result as void | boolean | null;
+				result = { then: ((fn: (flag?: void | boolean | null) => any) => fn(flag) as Promise<void | boolean | null>) };
 				isPromise = false;
 			}
 
-			const ready = result.then(() => {
-				if(!node.childList) return;
+			const ready = result.then((flag?: void | boolean | null): void | boolean | Promise<void | boolean> | null => {
+				if(flag === false || tile.s > n || tile.n < s || tile.w > e || tile.e < w) return;
+
+				const childList = tile.childList;
+				if(!childList) return(after && after(tile));
 
 				const readyList: any[] = [];
 
-				const ns = s + (n - s) / 2;
-				const ew = w + (e - w) / 2;
+				const centerNS = tile.s + (tile.n - tile.s) / 2;
+				const centerEW = tile.w + (tile.e - tile.w) / 2;
 				let child: Tile | null;
 
-				if(s < ns) {
-					child = node.childList[QuadPos.SW];
-					if(w < ew && child) readyList.push(rec(child));
-					child = node.childList[QuadPos.SE];
-					if(e >= ew && child) readyList.push(rec(child));
+				if(s < centerNS) {
+					child = childList[QuadPos.SW];
+					if(w < centerEW && child) readyList.push(rec(child));
+					child = childList[QuadPos.SE];
+					if(e >= centerEW && child) readyList.push(rec(child));
 				}
 
-				if(n >= ns) {
-					child = node.childList[QuadPos.NW];
-					if(w < ew && child) readyList.push(rec(child));
-					child = node.childList[QuadPos.NE];
-					if(e >= ew && child) readyList.push(rec(child));
+				if(n >= centerNS) {
+					child = childList[QuadPos.NW];
+					if(w < centerEW && child) readyList.push(rec(child));
+					child = childList[QuadPos.NE];
+					if(e >= centerEW && child) readyList.push(rec(child));
 				}
 
-				if(isPromise) return(Promise.all(readyList));
+				if(isPromise) {
+					return(Promise.all(readyList).then(() => after && after(tile) as any));
+				} else if(after) after(tile);
 			});
 
 			return(ready);
@@ -61,10 +75,22 @@ export class QuadTree<Tile extends QuadTile = QuadTile> {
 		return(rec(root));
 	}
 
-	findTiles(s?: number, w?: number, n?: number, e?: number) {
+	/** @param tileNS Tile minimum size in north-south direction. Parent tile is reported instead of any smaller children.
+	  * @param tileEW Tile minimum size in east-west direction. */
+
+	findTiles(s?: number, w?: number, n?: number, e?: number, tileNS?: number, tileEW?: number) {
 		const result: Tile[] = [];
 
-		this.iterate((tile: Tile) => { if(!tile.childList) result.push(tile) }, s, w, n, e);
+		this.iterate((tile: Tile) => {
+			const childNS = (tile.n - tile.s) / 2;
+			const childEW = (tile.e - tile.w) / 2;
+
+			// if(!tile.childList) result.push(tile)
+			if(!tile.childList || (tileNS && childNS < tileNS) || (tileEW && childEW < tileEW)) {
+				result.push(tile);
+				return(false);
+			}
+		}, null, s, w, n, e);
 
 		return(result);
 	}
@@ -101,7 +127,7 @@ export class QuadTree<Tile extends QuadTile = QuadTile> {
 					result.push(tile);
 				}
 			}
-		}, s, w, n, e);
+		}, null, s, w, n, e);
 
 		return(result);
 	}
@@ -109,16 +135,16 @@ export class QuadTree<Tile extends QuadTile = QuadTile> {
 	importStructure(spec: number[]) {
 		const Tile = this.Tile;
 		let pos = 0;
-		let node = this.root;
+		let tile = this.root;
 
-		function rec(node: Tile) {
-			node.split(spec[pos++]);
+		function rec(tile: Tile) {
+			tile.split(spec[pos++]);
 
 			const branchPosFlags = spec[pos++];
 			let posFlag = QuadPosFlag.SW;
 
 			for(let pos = QuadPos.SW; pos < 4; ++pos) {
-				if(branchPosFlags & posFlag) rec(node.childList![pos]!);
+				if(branchPosFlags & posFlag) rec(tile.childList![pos]!);
 				posFlag <<= 1;
 			}
 		}
