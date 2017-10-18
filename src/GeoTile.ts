@@ -49,6 +49,9 @@ export class GeoTile extends QuadTile {
 	/** Total number of points and line string waypoints. */
 	pointCount = 0;
 	pointList: Point[] = [];
+	/** Weight of each point, useful for clustering. */
+	pointWeightList?: number[];
+
 	lineList: LineStringRef[] = [];
 
 }
