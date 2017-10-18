@@ -1,4 +1,4 @@
-import { Point, LineString } from 'geobabel';
+import { Point, LineString } from 'cgeo';
 
 import { QuadTile, QuadPos } from './QuadTile';
 
@@ -17,7 +17,7 @@ export class GeoTile extends QuadTile {
 		++this.pointCount;
 	}
 
-	addLine(line: LineString, first = 0, last = line.posList.length / 2) {
+	addLine(line: LineString, first = 0, last = line.x.length - 1) {
 		this.lineList.push({ line, first, last });
 		this.pointCount += last - first + 1;
 	}
