@@ -29,7 +29,20 @@ export class GeoTile extends QuadTile {
 		const ns = swChild.n;
 		const ew = swChild.e;
 
+		let pos: QuadPos;
+
 		for(let pt of this.pointList) {
+			pos = QuadPos.SW;
+			if(pt.x >= ns) pos += (QuadPos.NW - QuadPos.SW);
+			if(pt.y >= ew) pos += (QuadPos.SE - QuadPos.SW);
+
+			this.childList![pos]!.addPoint(pt);
+		}
+
+		if(this.pointCount) {
+			this.pointCount = 0;
+			this.pointList = [];
+			this.lineList = [];
 		}
 	}
 
